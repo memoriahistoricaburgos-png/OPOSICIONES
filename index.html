@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Oposiciones · Banco de preguntas</title><meta name="theme-color" content="#0f5e63"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Oposiciones">
+<style>
+:root{--bg:#eef1f4;--sf:#fff;--tx:#1d2733;--mu:#667585;--bd:#d3dae1;--ac:#0f5e63;--ok:#2a7d4f;--ko:#b23a30;--wa:#a8741a}
+:root[data-theme=dark]{--bg:#12171c;--sf:#1b2229;--tx:#e3e8ed;--mu:#93a1ae;--bd:#2f3a45;--ac:#5fc0c4;--ok:#5cc08a;--ko:#ec7b70;--wa:#e2b45a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.55 Georgia,"Times New Roman",serif;display:grid;grid-template-columns:190px 1fr;min-height:100vh}
+nav{background:var(--sf);border-right:1px solid var(--bd);padding:16px 10px;position:sticky;top:0;height:100vh;font-family:system-ui,sans-serif}
+nav h1{font:700 17px Georgia,serif;margin:0 8px 14px}nav button{display:block;width:100%;text-align:left;border:0;background:none;color:var(--tx);padding:9px 10px;border-radius:6px;font:inherit;cursor:pointer}
+nav button.on{background:var(--ac);color:var(--bg)}main{padding:22px;max-width:980px;width:100%;min-width:0}h2{margin:0 0 14px}
+button,select,input,textarea{font:14px system-ui,sans-serif;color:var(--tx);background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:6px 10px}
+button{cursor:pointer}button:hover{border-color:var(--ac)}button.pr{background:var(--ac);color:var(--bg);border-color:var(--ac)}button.dg{color:var(--ko)}
+textarea,input[type=text],input:not([type]){width:100%}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}.row>input{flex:1;min-width:120px}
+.box{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px}.card{background:var(--sf);border:1px solid var(--bd);border-left:5px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:10px}
+.c1{border-left-color:var(--ok)}.c2{border-left-color:var(--wa)}.c3{border-left-color:var(--ko)}.tag{font:12px system-ui;color:var(--mu)}.mu{color:var(--mu);font-size:14px}
+.drop{border:2px dashed var(--bd);border-radius:10px;padding:30px;text-align:center;cursor:pointer}.drop.hv{border-color:var(--ac)}
+.opt{display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px;font:16px Georgia,serif}.opt.sel{border-color:var(--ac);box-shadow:inset 0 0 0 1px var(--ac)}.opt.ok{background:var(--ok);color:#fff;border-color:var(--ok)}.opt.ko{background:var(--ko);color:#fff;border-color:var(--ko)}
+.grid{display:flex;gap:4px;flex-wrap:wrap}.grid button{width:34px;padding:4px}.grid .an{background:var(--ac);color:var(--bg)}.grid .fl{outline:2px solid var(--wa)}.grid .cu{border-width:2px;border-color:var(--tx)}
+.banner{background:var(--wa);color:#fff;padding:8px 12px;border-radius:6px;margin-bottom:12px;font:14px system-ui}table{width:100%;border-collapse:collapse;font:14px system-ui}td,th{padding:5px 8px;border-bottom:1px solid var(--bd);text-align:left}
+#toast{position:fixed;bottom:16px;right:16px;background:var(--tx);color:var(--bg);padding:9px 14px;border-radius:6px;font:14px system-ui;display:none;z-index:9}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}#pg{position:sticky;top:10px;align-self:start;max-height:96vh;overflow:auto}#pg canvas{width:100%}
+@media(max-width:760px){body{grid-template-columns:1fr}nav{position:static;height:auto;display:flex;flex-wrap:wrap;gap:4px;border-right:0;border-bottom:1px solid var(--bd)}nav h1{display:none}nav button{width:auto;padding:6px 9px;font-size:14px}.split{grid-template-columns:1fr}main{padding:12px}}
+</style></head><body>
+<nav id="nav"></nav><main id="main"></main><div id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
+<script>
+"use strict";
+/* ========== UTILIDADES ========== */
+const $=id=>document.getElementById(id);
+const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const L='ABCDE', uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3500)}
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+const hash=s=>{let h=5381;for(const c of norm(s))h=(h*33^c.charCodeAt(0))>>>0;return h.toString(36)};
+function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type||'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+
+/* ========== DB (IndexedDB): preguntas | errores | historial | config ========== */
+const DB={db:null,
+ open(){return new Promise((res,rej)=>{const r=indexedDB.open('oposiciones',4);
+  r.onupgradeneeded=()=>{const d=r.result,mk=(n,o)=>{if(!d.objectStoreNames.contains(n))d.createObjectStore(n,o)}; /* solo crea lo que falte: nunca borra datos */ mk('preguntas',{keyPath:'id'});mk('errores',{keyPath:'id'});mk('historial',{keyPath:'id',autoIncrement:true});mk('config',{keyPath:'k'});mk('pdfs',{keyPath:'name'});mk('pendientes',{keyPath:'id'});mk('pdfdata',{keyPath:'name'});mk('libs',{keyPath:'k'})};
+  r.onsuccess=()=>{DB.db=r.result;res()};r.onerror=()=>rej(r.error)})},
+ req(s,m,f){return new Promise((res,rej)=>{const t=DB.db.transaction(s,m);const r=f(t.objectStore(s));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})},
+ all:s=>DB.req(s,'readonly',o=>o.getAll()),get:(s,k)=>DB.req(s,'readonly',o=>o.get(k)),
+ put:(s,v)=>DB.req(s,'readwrite',o=>o.put(v)),del:(s,k)=>DB.req(s,'readwrite',o=>o.delete(k)),clear:s=>DB.req(s,'readwrite',o=>o.clear()),
+ putMany(s,a){return new Promise((res,rej)=>{const t=DB.db.transaction(s,'readwrite'),o=t.objectStore(s);a.forEach(v=>o.put(v));t.oncomplete=res;t.onerror=()=>rej(t.error)})}};
+let CFG={k:'cfg',theme:'auto',corte:0,simN:100,simMin:90,apiKey:'',iaModel:'claude-sonnet-5-5',iaWeb:true,incluirDesf:false,acierto:1.2,fallo:0.4,temario:'',exitN:2,blankErr:false,sessions:0,lastBackup:0};
+const saveCfg=()=>DB.put('config',CFG);
+function applyTheme(){const d=CFG.theme==='oscuro'||(CFG.theme==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.dataset.theme=d?'dark':'light'}
+
+/* ========== LIBRERÍAS: CDN o copia local guardada en IndexedDB (uso sin conexión) ========== */
+const LIBS={pdf:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',pdfw:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+ tess:'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js',tessw:'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/worker.min.js',
+ core:'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0/tesseract-core-simd-lstm.wasm.js',spa:'https://cdn.jsdelivr.net/npm/@tesseract.js-data/spa/4.0.0_best_int/spa.traineddata.gz'};
+const LB={}; // URLs blob de las copias locales
+async function libBlob(k){if(LB[k])return LB[k];const r=await DB.get('libs',k);if(!r)return null;return LB[k]=URL.createObjectURL(new Blob([r.data],{type:'text/javascript'}))}
+const addScript=src=>new Promise(r=>{const s=document.createElement('script');s.src=src;s.onload=()=>r(true);s.onerror=()=>r(false);document.head.appendChild(s)});
+async function ensureLibs(){ // si el CDN no cargó (sin internet), usa la copia guardada
+ if(!window.pdfjsLib){const b=await libBlob('pdf');if(b)await addScript(b)}
+ if(!window.Tesseract){const b=await libBlob('tess');if(b)await addScript(b)}}
+/* El idioma español se deja en la caché propia de Tesseract (IndexedDB «keyval-store») para que el OCR no descargue nada */
+async function seedTessLang(){const r=await DB.get('libs','spa');if(!r)return;
+ await new Promise(res=>{const o=indexedDB.open('keyval-store');o.onupgradeneeded=()=>o.result.createObjectStore('keyval');
+  o.onsuccess=()=>{const d=o.result;if(!d.objectStoreNames.contains('keyval')){d.close();return res()}const t=d.transaction('keyval','readwrite');t.objectStore('keyval').put(new Uint8Array(r.data),'./spa.traineddata');t.oncomplete=t.onerror=()=>{d.close();res()}};o.onerror=()=>res()})}
+async function prepareOffline(){const el=$('offst'),keys=Object.keys(LIBS);let tot=0;
+ try{for(let i=0;i<keys.length;i++){const k=keys[i];el.textContent=`Descargando ${i+1}/${keys.length}…`;const r=await fetch(LIBS[k]);if(!r.ok)throw new Error('HTTP '+r.status+' en '+LIBS[k]);
+   const data=k==='spa'?await r.arrayBuffer():await r.text();tot+=k==='spa'?data.byteLength:data.length;await DB.put('libs',{k,data,fecha:Date.now()})}
+  await seedTessLang();el.textContent=`Listo: ${(tot/1e6).toFixed(1)} MB guardados. La importación y el OCR funcionan sin internet.`}
+ catch(e){el.textContent='No se pudo descargar ('+(e.message||e)+'). Necesitas internet para este paso.'}}
+let OCRW=null;
+async function tessWorkerBlob(){if(LB.tcomb)return LB.tcomb;const a=await DB.get('libs','core'),b=await DB.get('libs','tessw');if(!a||!b)return null;
+ return LB.tcomb=URL.createObjectURL(new Blob([a.data,'\n;\n',b.data],{type:'text/javascript'}))} // el motor queda definido antes de que el worker lo pida
+async function ocrCanvas(c){if(!OCRW){const wb=await tessWorkerBlob();await seedTessLang();
+  OCRW=await Tesseract.createWorker('spa',1,wb?{workerPath:wb,workerBlobURL:false}:{})}
+ return (await OCRW.recognize(c)).data.text}
+let WK=null;
+async function pdfWorker(){if(WK)return WK;
+ WK=(async()=>{let src=await libBlob('pdfw');
+  if(!src){try{const code=await (await fetch(LIBS.pdfw)).text();src=URL.createObjectURL(new Blob([code],{type:'text/javascript'}))}catch(e){src=LIBS.pdfw}}
+  pdfjsLib.GlobalWorkerOptions.workerSrc=src;
+  await addScript(src); // respaldo: PDF.js puede trabajar sin Worker si este falla (p. ej. desde file://)
+ })();return WK}
+/* Lee el texto de una página. Si detecta dos columnas (un canal vertical cerca del centro que casi nada cruza), lee primero la izquierda y luego la derecha. */
+async function pageText(p){const c=await p.getTextContent(),W=p.getViewport({scale:1}).width,its=c.items.filter(i=>i.str&&i.str.trim());
+ const lines=arr=>{const rows={};arr.forEach(i=>{const y=Math.round(i.transform[5]/3);(rows[y]=rows[y]||[]).push(i)});
+  return Object.keys(rows).map(Number).sort((a,b)=>b-a).map(y=>rows[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean)};
+ if(its.length>20){let best=null;
+  for(let f=.35;f<=.651;f+=.01){const x=W*f,cross=its.filter(i=>i.transform[4]<x-2&&i.transform[4]+(i.width||0)>x+2).length;if(!best||cross<best.cross)best={x,cross}}
+  const X=i=>i.transform[4]<best.x-2&&i.transform[4]+(i.width||0)>best.x+2,full=its.filter(X),col=its.filter(i=>!X(i)),lc=col.filter(i=>i.transform[4]<best.x),rc=col.filter(i=>i.transform[4]>=best.x);
+  if(best.cross<=its.length*.03&&lc.length>=its.length*.2&&rc.length>=its.length*.2){p._cols=2;const top=Math.max(...col.map(i=>i.transform[5]));
+   return [...lines(full.filter(i=>i.transform[5]>top)),...lines(lc),...lines(rc),...lines(full.filter(i=>i.transform[5]<=top))].join('\n')}}
+ return lines(its).join('\n')}
+async function renderPage(p,scale){const v=p.getViewport({scale}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;return c}
+
+/* ========== NORMATIVA: referencia legal de cada pregunta ========== */
+const RLEY=/\b(Ley(?:\s+Org[áa]nica)?|Real\s+Decreto(?:\s+Legislativo|-ley)?|Decreto(?:\s+Legislativo)?|Orden|Directiva|Reglamento(?:\s*\((?:UE|CE)\))?)\s+(?:n[ºo°.]\s*)?((?:[A-Z]{2,4}\/)?\d{1,4}\/\d{2,4})/i;
+function extractLey(q){const t=q.text+' '+q.opts.join(' '),m=RLEY.exec(t);let s='';
+ if(m){s=m[1].replace(/\s+/g,' ')+' '+m[2];s=s[0].toUpperCase()+s.slice(1)}else if(/constituci[oó]n espa[ñn]ola/i.test(t))s='Constitución Española';
+ const a=/\bart(?:[íi]culo|\.)\s*(\d+(?:\.\d+)?)/i.exec(t);return s?s+(a?', art. '+a[1]:''):''}
+const leyBase=s=>(s||'').split(',')[0].trim();
+const hasNorma=q=>!!(q.ley||/\b(ley|real decreto|decreto|orden ministerial|reglamento|directiva|constituci[oó]n|art[íi]culo|art\.\s*\d)/i.test(q.text+' '+q.opts.join(' ')));
+const EXM=m=>m==='examen'||m==='simulacro';
+
+/* ========== PARSER ========== */
+const MK='\\[\\s*[xX✔✓☒✗]\\s*\\]|\\(\\s*[xX]\\s*\\)|[xX]\\)|[✔✓☒]|[xX](?=\\s+\\(?[a-eA-E]\\s*[.)\\-–])';
+const RO=new RegExp('^(?:('+MK+')\\s*)?\\(?([a-eA-E])\\s*[.)\\-–]\\s*(.*)$'),RM=new RegExp('^('+MK+')\\s*'),RQ=/^(\d{1,3})\s*[.)\-–]\s*(.+)/;
+const RSOL=/^(respuestas?( correctas)?|hoja de respuestas|soluciones|soluci[oó]n|plantilla|clave)\b/i, RPN=/^(p[aá]g(ina)?\.?\s*)?\d+(\s*(de|\/)\s*\d+)?$/i;
+function solPairs(txt){const m={},r=/(\d{1,3})\s*[.\-–:)]*\s*([a-eA-E])(?![a-zA-Záéíóúñ])/g;let x;while(x=r.exec(txt))m[+x[1]]=L.indexOf(x[2].toUpperCase());return m}
+/* lines:[{t,p,ocr}] → preguntas. Ignora cabeceras repetidas y números de página. */
+function parse(lines,file){
+ const cnt={};lines.forEach(l=>{(cnt[l.t]=cnt[l.t]||new Set()).add(l.p)});const np=new Set(lines.map(l=>l.p)).size;
+ const all=lines.map(l=>l.t).join(' ');
+ lines=lines.filter(l=>!RPN.test(l.t)&&!(np>=3&&cnt[l.t].size>=np*0.5));
+ const qs=[];let cur=null,last=0,sol=null,g=0,gi=0,yr=(/\b(?:19|20)\d\d\b/.exec(file||'')||[''])[0]; // g = inicio del examen actual (un PDF puede traer varios)
+ let pend='';const apply=()=>{const st=(pend+' '+(sol||'')).trim();if(st){const sp=solPairs(st);qs.slice(g).forEach(q=>{if(q.ans<0&&sp[q.num]!=null){q.ans=sp[q.num];q.ocr=false}})}sol=null;pend='';g=qs.length;gi++};
+ for(const l of lines){const t=l.t,m0=RQ.exec(t);
+  if(!m0&&t.length<130&&/examen|convocatoria|proceso selectivo|ejercicio/i.test(t)){const y=/\b(?:19|20)\d\d\b/.exec(t);if(y)yr=y[0]}
+  if(sol!==null){ // dentro de una plantilla: «1.» con enunciado = otro examen; la pregunta siguiente de la numeración = la plantilla estaba en medio (p. ej. al pie de la columna izquierda)
+   const isQ=m0&&m0[2].length>=20&&!/^[a-eA-E]\s*([\d.\-–,;]|$)/.test(m0[2]);
+   if(isQ&&m0[1]==='1'&&last>1){apply();cur=null;last=0}else if(isQ&&+m0[1]===last+1){pend+=' '+sol;sol=null}else{sol+=' '+t;continue}}
+  if(RSOL.test(t)&&cur){sol=t;continue}
+  let m;
+  if(cur&&(m=RO.exec(t))&&L.indexOf(m[2].toUpperCase())===cur.opts.length){
+   let txt=m[3],mark=!!m[1];const m2=RM.exec(txt);if(m2){mark=true;txt=txt.slice(m2[0].length)}
+   cur.opts.push(txt);if(mark){cur.ans=cur.opts.length-1;cur.x=true;if(l.ocr)cur.ocr=true}continue}
+  if(m0&&(!cur||cur.opts.length>=2||+m0[1]===last+1)){if(+m0[1]===1&&last>1){g=qs.length;gi++}last=+m0[1];cur={num:last,text:m0[2],opts:[],ans:-1,page:l.p,ocr:!!l.ocr,file,anio:yr,grp:gi};qs.push(cur);continue}
+  if(cur){if(cur.opts.length)cur.opts[cur.opts.length-1]+=' '+t;else cur.text+=' '+t}}
+ apply();
+ return {qs:qs.filter(q=>q.opts.length>=2),solOnly:!qs.length,solAll:solPairs(all)}}
+function finalize(q){q.id=uid();q.hash=hash(q.text);q.date=Date.now();q.topic=q.topic||'';q.text=q.text.trim();q.opts=q.opts.map(o=>o.trim());
+ q.status=q.ans<0?'sin respuesta':(q.ocr&&q.x?'dudosa':'confirmada');q.ley=extractLey(q);q.veces=1;q.anios=q.anio?[q.anio]:[];q.vistas=0;q.aciertos=0;return q}
+
+/* ========== IMPORTADOR ========== */
+const R={qs:[],pdfs:{},filter:'todas'};let LIST=[];
+/* Los PDFs se guardan en el almacén «pdfs»: no hay que volver a subirlos al actualizar la aplicación. */
+async function importFiles(files){
+ if(!window.pdfjsLib){toast('PDF.js no se ha cargado: comprueba tu conexión a internet.');return}
+ files=[...files].filter(f=>/\.pdf$/i.test(f.name)).slice(0,20);if(!files.length)return;
+ const have=new Map((await DB.all('pdfs')).map(p=>[p.name,p])),jobs=[];
+ for(const f of files){const ex=have.get(f.name);
+  if(ex&&ex.size===f.size){toast(f.name+' ya estaba guardado. Usa «Reprocesar» en Mis PDFs para releerlo.');continue}
+  await DB.put('pdfdata',{name:f.name,data:await f.arrayBuffer()});await DB.put('pdfs',{name:f.name,size:f.size,date:Date.now(),nq:0,info:''});jobs.push(f.name)}
+ await processPdfs(jobs)}
+/* Informe de calidad: números de pregunta que faltan (un reinicio de numeración = otro examen) */
+function report(qs){const miss=[];let p=0;qs.forEach(q=>{if(p>0&&q.num>p+1)for(let k=p+1;k<q.num;k++)miss.push(k);p=q.num});
+ return (miss.length?'⚠ Faltan números: '+miss.slice(0,25).join(', ')+(miss.length>25?'…':''):'Numeración correcta')+` · ${qs.filter(q=>q.ans<0).length} sin respuesta`}
+async function processPdfs(names){
+ if(!window.pdfjsLib){toast('PDF.js no se ha cargado: comprueba tu conexión a internet.');return}
+ if(!names.length){viewLib();return}await pdfWorker();
+ $('queue').innerHTML=names.map((n,i)=>`<div class="box"><b>${E(n)}</b> <span class="tag" id="st${i}">En cola</span><br><progress id="pr${i}" value="0" max="1" style="width:100%"></progress><div class="mu" id="lg${i}"></div><div id="rp${i}"></div></div>`).join('');
+ const sum=[],bm=await bankMap();
+ for(let i=0;i<names.length;i++){const name=names[i],st=$('st'+i),pr=$('pr'+i),lg=$('lg'+i);
+  try{const rec=await DB.get('pdfs',name),dat=await DB.get('pdfdata',name);st.textContent='Leyendo…';
+   const pdf=await pdfjsLib.getDocument({data:dat.data.slice(0)}).promise;R.pdfs[name]=pdf;
+   const lines=[],meth=[];
+   for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p);let txt=await pageText(pg),ocr=false;
+    if(txt.replace(/\s/g,'').length<15){ocr=true;if(!window.Tesseract){meth.push(p+':sin OCR');toast('Tesseract.js no se ha cargado: las páginas escaneadas no se pueden leer.');pr.value=p/pdf.numPages;continue}
+     st.textContent=`OCR página ${p}/${pdf.numPages}…`;txt=await ocrCanvas(await renderPage(pg,2.5))}
+    meth.push(`${p}:${ocr?'OCR':pg._cols?'texto 2 col.':'texto'}`);lg.textContent='Métodos por página → '+meth.join(' · ');
+    txt.split('\n').map(x=>x.trim()).filter(Boolean).forEach(t=>lines.push({t,p,ocr}));pr.value=p/pdf.numPages}
+   const r=parse(lines,name),sgs=parseSolutions(lines,name),np=sgs.reduce((a,g)=>a+Object.keys(g.pairs).length,0);let rp='';
+   if((r.qs.length===0&&np>=3)||(r.qs.length<3&&np>=5)){rec.tipo='respuestas';rec.solGroups=sgs;rec.nq=0;rp=`Archivo de respuestas: ${np} respuestas en ${sgs.length} examen(es)`;st.textContent='Listo · solo respuestas';sum.push(name+': '+rp)}
+   else{r.qs.forEach(finalize);const a=await autoAdd(r.qs,bm);rec.tipo='preguntas';rec.nq=r.qs.length;rp=report(r.qs);st.textContent=`Listo · ${r.qs.length} preguntas guardadas en el banco`;
+    sum.push(`${name}: ${a.add} nuevas · ${a.merged} ya vistas en otro examen (suman una aparición) · ${a.skipped} ya existían`)}
+   $('rp'+i).textContent=rp;rec.info=rp;await DB.put('pdfs',rec)
+  }catch(e){console.error(e);st.textContent='Error: '+(e.message||e)+' — revisa la conexión a internet y recarga la página.'}}
+ showLink(await linkAnswers(),sum);viewLib()}
+async function viewLib(){const el=$('lib');if(!el)return;const l=await DB.all('pdfs');
+ el.innerHTML=l.length?`<h2>Mis PDFs guardados (${l.length})</h2><div class="row"><button data-act="relink">Relacionar respuestas ahora</button></div><div style="overflow:auto"><table><tr><th>Archivo</th><th>Tipo</th><th>MB</th><th>Preguntas</th><th>Informe y relación</th><th></th></tr>${l.map(p=>`<tr><td>${E(p.name)}</td><td>${p.tipo==='respuestas'?'Respuestas':'Preguntas'}</td><td>${(p.size/1e6).toFixed(1)}</td><td>${p.nq}</td><td class="mu">${E(p.info||'')}${p.vinculo?'<br>🔗 '+E(p.vinculo):''}</td><td><button data-act="reproc" data-n="${E(p.name)}">Reprocesar</button> <button class="dg" data-act="pdel" data-n="${E(p.name)}">Quitar</button></td></tr>`).join('')}</table></div><p class="mu">Se guardan en este navegador: no hace falta subirlos otra vez al actualizar la aplicación.</p>`:''}
+function renderReview(){
+ const f=R.filter;LIST=R.qs.filter(q=>f==='todas'||(f==='dudosas'&&q.status==='dudosa')||(f==='sin respuesta'&&q.status==='sin respuesta')||(f==='duplicadas'&&q.dup));
+ $('review').innerHTML=R.qs.length?`<h2>Revisión (${R.qs.length} pendientes)</h2><div class="row"><select id="rf" data-act="rfilter">${['todas','dudosas','sin respuesta','duplicadas'].map(o=>`<option ${o===f?'selected':''}>${o}</option>`).join('')}</select><button class="pr" data-act="appall">Aprobar todas las confiables</button><span class="mu">Solo las aprobadas pasan al banco.</span></div><div class="split"><div>${LIST.map((q,i)=>card(q,i,'r')).join('')||'<p class="mu">Nada con este filtro.</p>'}</div><div id="pg" class="box mu">Pulsa «Ver pág.» para comparar con la página original.</div></div>`:''}
+function card(q,i,m){return `<div class="card ${q.status==='confirmada'?'c1':q.status==='dudosa'?'c2':'c3'}" data-i="${i}"><div class="row"><b>${q.num?'#'+q.num+' · ':''}${E(q.file||'')} p.${q.page||'-'}</b><span class="tag">${q.status}${q.dup?' · posible duplicada':''}${q.ocr?' · OCR':''}${q.anio?' · '+q.anio:''}${q.veces>1?' · repetida ×'+q.veces:''}${q.conflicto?' · ⚠ no coincide con la plantilla':''}${q.desfasada?' · ⚠ posiblemente desfasada':''}</span></div>
+<textarea data-f="text" rows="3">${E(q.text)}</textarea>${q.opts.map((o,k)=>`<div class="row"><b>${L[k]}</b><input data-f="opt" data-o="${k}" value="${E(o)}"></div>`).join('')}
+<div class="row"><select data-f="ans"><option value="-1">Sin respuesta</option>${q.opts.map((o,k)=>`<option value="${k}" ${q.ans===k?'selected':''}>Correcta: ${L[k]}</option>`).join('')}</select><input data-f="topic" placeholder="Tema / bloque" value="${E(q.topic||'')}"></div><div class="row"><input data-f="ley" placeholder="Referencia legal (p. ej. Ley 16/1985, art. 40)" value="${E(q.ley||'')}"></div><div class="row"><input data-f="nota" placeholder="Explicación (opcional)" value="${E(q.nota||'')}"><label class="tag"><input type="checkbox" data-f="excl" ${q.excl?'checked':''}> Anulada / excluir de tests</label></div>
+<div class="row"><button class="pr" data-act="${m}ok" data-i="${i}">${m==='r'?'Aprobar':'Guardar'}</button><button data-act="page" data-i="${i}">Ver pág.</button>${m==='b'&&hasNorma(q)?`<button data-act="iaone" data-i="${i}">Revisar normativa con IA</button>`:''}<button class="dg" data-act="${m}del" data-i="${i}">Eliminar</button></div>${iaBlock(q,i)}</div>`}
+async function approve(q){const b=await DB.all('preguntas'),ex=b.find(x=>x.hash===q.hash&&x.id!==q.id);
+ if(ex){if(!confirm('Esta pregunta ya existe en el banco.\nAceptar = fusionar (cuenta una aparición más y actualiza la respuesta)\nCancelar = omitir'))return false;
+  if(ex.file!==q.file){ex.veces=(ex.veces||1)+1;ex.anios=[...new Set([...(ex.anios||[ex.anio]),q.anio].filter(Boolean))]}
+  if(q.ans>=0&&q.status==='confirmada'){ex.ans=q.ans;ex.status='confirmada'}await DB.put('preguntas',ex);return true}
+ delete q.dup;await DB.put('preguntas',q);return true}
+
+/* ========== BANCO ========== */
+const BK={q:'',topic:'',file:'',status:'',ley:'',ia:''};
+async function viewBank(){const all=await DB.all('preguntas'),T=[...new Set(all.map(q=>q.topic).filter(Boolean))],F=[...new Set(all.map(q=>q.file).filter(Boolean))];
+ const s=BK.q.toLowerCase(),Ls=[...new Set(all.map(q=>leyBase(q.ley)).filter(Boolean))].sort(),iaF={'Con normativa':q=>hasNorma(q),'Normativa sin revisar':q=>hasNorma(q)&&!q.ia,'IA: desfasada':q=>q.desfasada,'IA: vigente':q=>q.ia&&q.ia.estado==='vigente','IA: dudosa':q=>q.ia&&q.ia.estado==='dudosa','IA: otra respuesta':q=>q.ia&&q.ia.letra>=0&&q.ia.letra!==q.ans};
+ LIST=all.filter(q=>(!s||q.text.toLowerCase().includes(s)||(q.ley||'').toLowerCase().includes(s))&&(!BK.topic||q.topic===BK.topic)&&(!BK.file||q.file===BK.file)&&(!BK.status||q.status===BK.status)&&(!BK.ley||leyBase(q.ley)===BK.ley)&&(!BK.ia||iaF[BK.ia](q)));
+ const nN=all.filter(hasNorma).length,nP=all.filter(q=>hasNorma(q)&&!q.ia).length,nD=all.filter(q=>q.desfasada).length;
+ const opt=(a,v,t='Todos')=>`<option value="">${t}</option>`+a.map(x=>`<option ${x===v?'selected':''}>${E(x)}</option>`).join('');
+ $('main').innerHTML=`<h2>Banco (${all.length} preguntas)</h2><div class="row"><input id="bq" placeholder="Buscar…" value="${E(BK.q)}"><select data-act="bf" data-k="topic">${opt(T,BK.topic,'Todos los temas')}</select><select data-act="bf" data-k="file">${opt(F,BK.file,'Todos los PDFs')}</select><select data-act="bf" data-k="status">${opt(['confirmada','dudosa','sin respuesta'],BK.status,'Todos los estados')}</select><select data-act="bf" data-k="ley">${opt(Ls,BK.ley,'Toda la normativa')}</select><select data-act="bf" data-k="ia">${opt(Object.keys(iaF),BK.ia,'Revisión IA: todas')}</select></div><div class="box"><b>Normativa</b> · ${nN} preguntas citan normativa · ${nN-nP} revisadas con IA · ${nD} posiblemente desfasadas<div class="row"><button class="pr" data-act="iaall" ${nP?'':'disabled'}>Revisar con IA las ${nP} pendientes</button><button data-act="iastop">Detener</button><span class="mu" id="iast"></span></div></div><p class="mu">${LIST.length} resultados${LIST.length>60?' (se muestran 60)':''}</p>${LIST.slice(0,60).map((q,i)=>card(q,i,'b')).join('')}`}
+
+/* ========== TESTS ========== */
+const inScope=(q,v)=>!v||(v[0]==='t'?q.topic===v.slice(2):v[0]==='f'?q.file===v.slice(2):v[0]==='y'?q.anio===v.slice(2):v[0]==='r'?(q.veces||1)>1:v[0]==='n'?!q.vistas:v[0]==='w'?q.vistas>0:v[0]==='l'?leyBase(q.ley)===v.slice(2):v[0]==='d'?!!q.desfasada:true);
+let T=null,VIEW='importar';
+const penOpts=(v)=>[[0,'Sin penalización'],[0.25,'1/4'],[1/3,'1/3'],[0.5,'1/2']].map(([x,n])=>`<option value="${x}" ${Math.abs(x-v)<.001?'selected':''}>${n}</option>`).join('');
+async function cfgHTML(src){let sc='',th='';
+ if(src==='banco'){const a=await DB.all('preguntas');sc=`<label>Origen <select id="tS"><option value="">Todo el banco</option><option value="r:">Más repetidas entre convocatorias</option><option value="n:">Solo preguntas nuevas (no vistas)</option><option value="w:">Mis más débiles (menor % de acierto)</option>${[...new Set(a.map(q=>q.anio).filter(Boolean))].sort().map(y=>`<option value="y:${y}">Examen ${y}</option>`).join('')}${[...new Set(a.map(q=>q.topic).filter(Boolean))].map(t=>`<option value="t:${E(t)}">Tema: ${E(t)}</option>`).join('')}${[...new Set(a.map(q=>leyBase(q.ley)).filter(Boolean))].sort().map(l=>`<option value="l:${E(l)}">Norma: ${E(l)}</option>`).join('')}${[...new Set(a.map(q=>q.file))].map(t=>`<option value="f:${E(t)}">PDF: ${E(t)}</option>`).join('')}</select></label>`}
+ if(src==='banco')th=`<div class="row"><label style="flex:1;min-width:240px"><b>Test temático</b> (opcional) · escribe temas separados por comas<input id="tK" placeholder="arqueología medieval, Alhambra, conservación y restauración"></label></div><div class="row"><label><input type="checkbox" id="tL"> Búsqueda amplia (basta con la mitad de las palabras de cada tema)</label><button data-act="tprev">Ver coincidencias</button></div><div id="tPrev"></div><hr style="border:0;border-top:1px solid var(--bd)">`;
+ return `<div class="box">${th}<div class="row">${sc}<label>Nº preguntas (25–100) <input id="tN" type="number" min="25" max="100" value="50" style="width:80px"></label><label>Modo <select id="tM"><option value="estudio">Estudio</option><option value="examen">Examen</option><option value="rapido">Repaso rápido</option>${src==='banco'?`<option value="simulacro">🔒 Simulacro oficial (${CFG.simN} preg. · ${CFG.simMin} min)</option>`:''}</select></label></div>
+<div class="row"><label>Acierto + <input id="tA" type="number" step="0.1" min="0" value="${CFG.acierto}" style="width:70px"></label><label>Fallo − <input id="tF" type="number" step="0.1" min="0" value="${CFG.fallo}" style="width:70px"></label><label>Límite (min, 0=sin) <input id="tT" type="number" min="0" value="0" style="width:80px"></label><label><input type="checkbox" id="tR" checked> Orden aleatorio (preguntas y opciones)</label>${src==='banco'?'<label><input type="checkbox" id="tO"> Orden original (simulacro de examen)</label>':''}</div>
+<button class="pr" data-act="start" data-src="${src}">Empezar test</button></div>`}
+async function startTest(src){
+ if(await DB.get('config','run')&&!confirm('Tienes un test a medias. Si empiezas otro, se descartará. ¿Continuar?'))return;
+ let pool;if(src==='errores'){const e=(await DB.all('errores')).filter(x=>!x.out);
+  e.sort((a,b)=>a.box-b.box||(a.lastRev||a.last)-(b.lastRev||b.last)||b.fails-a.fails); // Leitner: cajas bajas y más antiguas primero
+  const bank=Object.fromEntries((await DB.all('preguntas')).map(q=>[q.id,q]));pool=e.map(x=>bank[x.id]||x.q)}
+ else{const s=$('tS').value;pool=(await DB.all('preguntas')).filter(q=>inScope(q,s))}
+ pool=pool.filter(q=>q.ans>=0&&q.opts.length>=2&&!q.excl&&(CFG.incluirDesf||!q.desfasada));if(!pool.length){toast('No hay preguntas con respuesta para este test.');return}
+ const mode=$('tM').value,sh=$('tR').checked||mode==='simulacro',n=mode==='simulacro'?Math.max(1,+CFG.simN||100):Math.min(100,Math.max(25,+$('tN').value||50)),kw=src==='banco'&&$('tK').value.trim(),sv=src==='banco'?$('tS').value:'',orig=src==='banco'&&$('tO').checked;
+ if(sv[0]==='w')pool=pool.filter(q=>q.vistas>0).sort((a,b)=>(a.aciertos||0)/a.vistas-(b.aciertos||0)/b.vistas).slice(0,n);if(sv[0]==='r')pool=pool.sort((a,b)=>(b.veces||1)-(a.veces||1)).slice(0,n);
+ if(kw){const r=themedPick(pool,kw,$('tL').checked,n);if(!r.picked.length){toast('Ninguna pregunta con respuesta encaja con esos temas. Prueba «Ver coincidencias» o la búsqueda amplia.');return}pool=r.picked;if(r.picked.length<n)toast('Solo hay '+r.picked.length+' preguntas que encajen con esos temas.')}
+ if(orig)pool.sort((a,b)=>(a.file||'').localeCompare(b.file||'')||(a.num||0)-(b.num||0));else if(src!=='errores'||sh)pool=shuffle(pool);
+ const ac=isNaN(+$('tA').value)?1.2:+$('tA').value,fa=Math.abs(isNaN(+$('tF').value)?0.4:+$('tF').value),label=kw||(src==='errores'?'Banco de errores':sv?$('tS').selectedOptions[0].text:'Todo el banco');CFG.acierto=ac;CFG.fallo=fa;saveCfg();
+ const items=pool.slice(0,mode==='rapido'?Math.min(n,10):n).map(q=>{let o=q.opts.map((t,i)=>({t,i}));if(sh&&!orig)o=shuffle(o);return{q,o,cor:o.findIndex(x=>x.i===q.ans),sel:-1,flag:false,time:0}});
+ T={items,cur:0,mode,ac,fa,label:(mode==='simulacro'?'Simulacro · ':'')+label,lim:mode==='simulacro'?(+CFG.simMin||90)*60:(+$('tT').value||0)*60,t0:Date.now(),start:Date.now(),run:true,src};
+ T.iv=setInterval(tickClock,1000);showQ()}
+/* Test a medias: se guarda en cada respuesta y cada 15 s; al reabrir la aplicación se puede continuar */
+function saveRun(){if(!T||!T.run)return;const x={...T,iv:null,el:(Date.now()-T.start)/1000};DB.put('config',{k:'run',T:x}).catch(()=>{})}
+async function resumeRun(){const r=await DB.get('config','run');if(!r)return;T=r.T;T.start=Date.now()-T.el*1000;T.t0=Date.now();T.run=true;T.summary=false;clearInterval(T.iv);T.iv=setInterval(tickClock,1000);go('test')}
+window.addEventListener('beforeunload',()=>{if(T&&T.run){leave();saveRun()}});
+function tickClock(){const c=$('clk');if(!c||!T)return;const s=Math.floor((Date.now()-T.start)/1000),r=T.lim?T.lim-s:s;c.textContent=(T.lim?'Quedan ':'')+Math.floor(Math.max(r,0)/60)+':'+String(Math.max(r,0)%60).padStart(2,'0');if(T.lim&&r<=0&&T.run)finish();else if(s%15===0)saveRun()}
+function leave(){if(T){T.items[T.cur].time+=Date.now()-T.t0;T.t0=Date.now()}}
+function goQ(k){leave();T.cur=Math.max(0,Math.min(T.items.length-1,k));T.summary=false;showQ()}
+function answer(k){const it=T.items[T.cur];if(k>=it.o.length)return;if(!EXM(T.mode)&&it.sel>=0)return;it.sel=k;showQ();if(T.mode==='rapido')setTimeout(()=>{if(T&&T.run&&T.cur<T.items.length-1)goQ(T.cur+1)},900)}
+function showQ(){const it=T.items[T.cur],rev=!EXM(T.mode)&&it.sel>=0,n=T.items.length;saveRun();
+ $('main').innerHTML=`<div class="row"><b>Pregunta ${T.cur+1}/${n}</b><span class="tag">${T.mode==='simulacro'?'🔒 Simulacro · sin correcciones hasta entregar':E(T.mode)} · +${f2(T.ac)} / −${f2(T.fa)}${CFG.corte?' · objetivo '+f2(CFG.corte):''}</span><span id="clk" class="tag"></span><button data-act="flag">${it.flag?'★ Marcada':'☆ Marcar'}</button><button data-act="summary">Resumen / Entregar</button></div>
+ <div class="grid">${T.items.map((x,i)=>`<button data-act="goq" data-i="${i}" class="${x.sel>=0?'an':''} ${x.flag?'fl':''} ${i===T.cur?'cu':''}">${i+1}</button>`).join('')}</div>
+ <div class="box" style="margin-top:12px"><p>${E(it.q.text)}</p>${it.o.map((x,k)=>`<button class="opt ${rev?(k===it.cor?'ok':k===it.sel?'ko':''):(k===it.sel?'sel':'')}" data-act="ans" data-i="${k}"><b>${L[k]})</b> ${E(x.t)}</button>`).join('')}
+ ${rev&&it.q.nota?`<p class="mu">📝 ${E(it.q.nota)}</p>`:''}<div class="row"><button data-act="blank">Dejar en blanco</button><button data-act="prev">← Anterior</button><button class="pr" data-act="next">Siguiente →</button></div><p class="tag">Atajos: A–E responder · Enter siguiente · ←/→ navegar</p></div>`;tickClock()}
+function summary(){leave();T.summary=true;saveRun();const a=T.items.filter(i=>i.sel>=0).length,f=T.items.map((x,i)=>x.flag?i+1:null).filter(Boolean);
+ $('main').innerHTML=`<h2>Resumen</h2><div class="box">Contestadas: ${a} · En blanco: ${T.items.length-a} · Marcadas: ${f.join(', ')||'ninguna'}<div class="row"><button data-act="goq" data-i="${T.cur}">Volver</button><button class="pr" data-act="finish">Entregar test</button><button class="dg" data-act="abandon">Abandonar sin guardar</button></div></div>`}
+async function passQ(q){const e=await DB.get('errores',q.id);if(!e||e.out)return;e.streak++;e.box=Math.min(5,e.box+1);e.lastRev=Date.now();if(e.streak>=CFG.exitN)e.out=true;await DB.put('errores',e)}
+async function failQ(q){const e=(await DB.get('errores',q.id))||{id:q.id,fails:0};Object.assign(e,{q,fails:e.fails+1,streak:0,box:1,last:Date.now(),out:false});await DB.put('errores',e)}
+async function finish(){if(!T||!T.run)return;leave();T.run=false;clearInterval(T.iv);await DB.del('config','run');let ok=0,ko=0,bl=0;const det=[];
+ for(const it of T.items){const q=it.q,d={id:q.id,topic:q.topic||'',file:q.file||''};
+  if(it.sel<0){bl++;d.ok=null;if(CFG.blankErr)await failQ(q)}else if(it.sel===it.cor){ok++;d.ok=1;await passQ(q)}else{ko++;d.ok=0;await failQ(q)}if(it.sel>=0){const bq=await DB.get('preguntas',q.id);if(bq){bq.vistas=(bq.vistas||0)+1;if(d.ok)bq.aciertos=(bq.aciertos||0)+1;bq.upd=Date.now();await DB.put('preguntas',bq)}}det.push(d)}
+ const n=T.items.length,pts=ok*T.ac-ko*T.fa,max=n*T.ac,h={date:Date.now(),mode:T.mode,src:T.src,label:T.label,ok,ko,blank:bl,n,pts,max,ac:T.ac,fa:T.fa,nota:Math.max(0,pts)/max*10,notaSin:ok/n*10,dur:(Date.now()-T.start)/1000,corte:+CFG.corte||0,avgT:T.items.reduce((s,i)=>s+i.time,0)/n/1000,det};
+ await DB.put('historial',h);CFG.sessions++;await saveCfg();T.res=h;viewResult();syncFile(false)}
+function viewResult(){const h=T.res;
+ $('main').innerHTML=`<div class="row"><h2 style="margin:0;flex:1">Resultados</h2><button class="pr" data-act="newtest">Nuevo test</button></div><div class="box"><b style="font-size:28px">${f2(h.pts)} puntos</b> de ${f2(h.max)} · <b>Nota ${f2(h.nota)} / 10</b><br><span class="mu">${h.ok} × ${f2(h.ac)} − ${h.ko} × ${f2(h.fa)} · sin penalización: ${f2(h.notaSin)} / 10 · duración ${Math.round(h.dur/60)} min</span>${h.corte?`<br><b style="color:var(${h.nota>=h.corte?'--ok':'--ko'})">${h.nota>=h.corte?'Superas tu nota objetivo por':'Te faltan'} ${f2(Math.abs(h.nota-h.corte))}</b> <span class="mu">(objetivo ${f2(h.corte)} / 10, unos ${f2(Math.abs(h.nota-h.corte)/10*h.max)} puntos)</span>`:''}<br>Aciertos ${h.ok} · Fallos ${h.ko} · Blancos ${h.blank} · ${h.avgT.toFixed(1)} s por pregunta</div>
+ ${T.items.map((it,i)=>{const good=it.sel===it.cor;return `<div class="card ${it.sel<0?'c2':good?'c1':'c3'}"><b>${i+1}.</b> ${E(it.q.text)}<br><span class="mu">Tu respuesta: ${it.sel<0?'en blanco':E(it.o[it.sel].t)}<br>Correcta: ${E(it.o[it.cor].t)}</span><div class="row"><button data-act="fix" data-i="${i}">Reportar / corregir respuesta</button></div></div>`}).join('')}`}
+async function fixAns(i){const it=T.items[i],r=prompt('Letra correcta (A-'+L[it.q.opts.length-1]+'):');if(!r)return;const k=L.indexOf(r.trim().toUpperCase());if(k<0||k>=it.q.opts.length){toast('Letra no válida');return}
+ it.q.ans=k;it.q.status='confirmada';it.q.src='manual';it.q.upd=Date.now();await DB.put('preguntas',it.q);const e=await DB.get('errores',it.q.id);if(e){e.q=it.q;await DB.put('errores',e)}toast('Respuesta corregida en el banco');it.cor=it.o.findIndex(x=>x.i===k);viewResult()}
+
+/* ========== ERRORES ========== */
+async function viewErr(){const e=await DB.all('errores'),act=e.filter(x=>!x.out);
+ $('main').innerHTML=`<h2>Banco de errores</h2><p class="mu">${act.length} activas · ${e.length-act.length} superadas (historial conservado). Salen tras ${CFG.exitN} aciertos seguidos. Cajas Leitner 1–5.</p>${await cfgHTML('errores')}<div class="row"><button class="dg" data-act="clearerr">Vaciar banco de errores</button></div>
+ <table><tr><th>Pregunta</th><th>Fallos</th><th>Racha</th><th>Caja</th><th>Último fallo</th><th></th></tr>${e.sort((a,b)=>b.fails-a.fails).slice(0,100).map(x=>`<tr style="${x.out?'opacity:.5':''}"><td>${E(x.q.text.slice(0,90))}</td><td>${x.fails}</td><td>${x.streak}</td><td>${x.box}</td><td>${new Date(x.last).toLocaleDateString('es-ES')}</td><td><button class="dg" data-act="delerr" data-id="${x.id}">✕</button></td></tr>`).join('')}</table>`}
+
+/* ========== ESTADÍSTICAS ========== */
+async function viewStats(){const h=await DB.all('historial'),bank=await DB.all('preguntas'),np=bank.length,pm=Object.fromEntries(bank.map(q=>[q.id,q])),er=await DB.all('errores');
+ const agg=(f,none)=>{const m={};h.forEach(x=>x.det.forEach(d=>{if(d.ok===null)return;const t=f(pm[d.id]||d)||none;m[t]=m[t]||[0,0];m[t][0]+=d.ok;m[t][1]++}));return Object.entries(m).sort((x,y)=>x[1][0]/x[1][1]-y[1][0]/y[1][1]).map(([t,[a,b]])=>`<tr><td>${E(t)}</td><td>${(a/b*100).toFixed(0)}%</td><td>${a}/${b}</td></tr>`).join('')||'<tr><td class="mu">Sin datos</td></tr>'};
+ const days=new Set(h.map(x=>new Date(x.date).toDateString()));let streak=0,d=new Date();if(!days.has(d.toDateString()))d.setDate(d.getDate()-1);while(days.has(d.toDateString())){streak++;d.setDate(d.getDate()-1)}
+ const avg=h.length?h.reduce((s,x)=>s+x.avgT,0)/h.length:0;
+ $('main').innerHTML=`<h2>Estadísticas</h2><div class="box">Banco: ${np} · Errores activos: ${er.filter(x=>!x.out).length} · Tests: ${h.length} · Racha: ${streak} día(s) · Tiempo medio: ${avg.toFixed(1)} s/pregunta</div><div class="box"><b>Evolución de la nota</b><br><canvas id="cv" width="700" height="200" style="width:100%"></canvas></div>
+ <p class="mu">Tablas ordenadas de peor a mejor porcentaje de acierto.</p><div class="box"><b>Acierto por convocatoria</b><table>${agg(q=>q.anio?'Convocatoria '+q.anio:'','(sin año)')}</table></div><div class="box"><b>Acierto por tema</b><table>${agg(q=>q.topic,'(sin tema)')}</table></div><div class="box"><b>Acierto por norma</b><table>${agg(q=>leyBase(q.ley),'(sin norma)')}</table></div><div class="box"><b>Acierto por PDF</b><table>${agg(q=>q.file,'(sin PDF)')}</table></div>
+ <div class="box"><b>Más falladas</b><table>${er.sort((a,b)=>b.fails-a.fails).slice(0,10).map(x=>`<tr><td>${E(x.q.text.slice(0,100))}</td><td>${x.fails}</td></tr>`).join('')||'<tr><td class="mu">Sin datos</td></tr>'}</table></div>`;
+ const c=$('cv').getContext('2d'),s=getComputedStyle(document.documentElement),p=h.slice(-30);c.strokeStyle=s.getPropertyValue('--bd');c.fillStyle=s.getPropertyValue('--mu');c.font='11px sans-serif';
+ for(let i=0;i<=10;i+=5){const y=190-i*17;c.beginPath();c.moveTo(30,y);c.lineTo(690,y);c.stroke();c.fillText(i,8,y+4)}
+ if(+CFG.corte){const y=190-CFG.corte*17;c.save();c.setLineDash([6,4]);c.strokeStyle=s.getPropertyValue('--ko');c.beginPath();c.moveTo(30,y);c.lineTo(690,y);c.stroke();c.restore();c.fillStyle=s.getPropertyValue('--ko');c.fillText('objetivo '+f2(CFG.corte),600,y-4)}
+ c.strokeStyle=s.getPropertyValue('--ac');c.lineWidth=2;c.beginPath();p.forEach((x,i)=>{const px=40+(p.length>1?i*(640/(p.length-1)):320),py=190-x.nota*17;i?c.lineTo(px,py):c.moveTo(px,py)});c.stroke()}
+
+/* ========== COPIAS DE SEGURIDAD ========== */
+async function exportAll(){const o=await snapshot();
+ const txt=JSON.stringify(o),name='oposiciones-copia-'+new Date().toISOString().slice(0,10)+'.json';
+ if(window.showSaveFilePicker){try{const fh=await showSaveFilePicker({suggestedName:name,types:[{accept:{'application/json':['.json']}}]});const w=await fh.createWritable();await w.write(txt);await w.close()}catch(e){if(e.name==='AbortError')return;download(name,txt)}}else download(name,txt);
+ CFG.lastBackup=CFG.sessions;await saveCfg();toast('Copia exportada')}
+async function importAll(file){try{const o=JSON.parse(await file.text());if(o.app!=='oposiciones')throw 0;
+ const rep=confirm('Aceptar = REEMPLAZAR todo lo actual\nCancelar = FUSIONAR con lo actual');
+ if(rep)for(const s of['preguntas','errores','historial'])await DB.clear(s);
+ if(rep){await DB.putMany('preguntas',o.preguntas||[]);await DB.putMany('errores',o.errores||[]);await DB.putMany('historial',o.historial||[])}
+ if(rep&&o.config){const key=CFG.apiKey;CFG=Object.assign(CFG,o.config,{k:'cfg',apiKey:key});await saveCfg();applyTheme()}
+ if(!rep){const r=await mergeData(o);toast(`Fusionado: ${r.a} preguntas, ${r.b} errores y ${r.c} tests nuevos o actualizados`)}else toast('Copia importada');go('ajustes')}catch(e){toast('El archivo no es una copia válida de esta aplicación.')}}
+const csv=(rows)=>rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n');
+async function exportCSV(s){const a=await DB.all(s),qs=s==='errores'?a.map(x=>({...x.q,fails:x.fails})):a;
+ download(s+'.csv','\ufeff'+csv([['tema','pdf','pagina','pregunta','A','B','C','D','E','correcta','estado'],...qs.map(q=>[q.topic,q.file,q.page,q.text,...[0,1,2,3,4].map(i=>q.opts[i]||''),L[q.ans]||'',q.status])]),'text/csv')}
+
+/* ========== UI ========== */
+const VIEWS=[['importar','Importar'],['banco','Banco'],['test','Test'],['historial','Historial'],['errores','Errores'],['stats','Estadísticas'],['ajustes','Ajustes']];
+async function go(v){VIEW=v;if(T&&T.run&&v!=='test'){}
+ $('nav').innerHTML='<h1>Oposiciones</h1>'+VIEWS.map(([k,n])=>`<button data-act="nav" data-v="${k}" class="${k===v?'on':''}">${n}</button>`).join('');
+ const warn=CFG.sessions-CFG.lastBackup>=5?'<div class="banner">Llevas varias sesiones sin copia de seguridad. Ve a Ajustes → Exportar todo.</div>':'';
+ if(v==='importar'){const miss=(!window.pdfjsLib?'PDF.js':'')+(!window.Tesseract?' Tesseract.js':'');
+  $('main').innerHTML=warn+(miss?`<div class="banner">No se han cargado: ${miss}. Conéctate a internet o, si ya lo preparaste, usa Ajustes → Uso sin internet.</div>`:'')+`<h2>Importar PDFs</h2><div class="drop" id="drop">Arrastra hasta 20 PDFs aquí o pulsa para elegirlos<br><span class="mu">Texto seleccionable u OCR automático · puedes subir a la vez PDFs de preguntas y PDFs que solo traen las respuestas: se relacionan solos</span></div><input type="file" id="fi" accept="application/pdf" multiple hidden><div id="queue"></div><div id="linkrep"></div><div id="review"></div><div id="lib"></div>`;renderReview();viewLib()}
+ else if(v==='banco')await viewBank();
+ else if(v==='test'){if(T&&T.run&&!T.summary)showQ();else if(T&&T.res&&!T.run)viewResult();else{const run=await DB.get('config','run');$('main').innerHTML=warn+(run?`<div class="box" style="border-color:var(--ac)"><b>Tienes un test a medias</b> · ${E(run.T.label||'')} · pregunta ${run.T.cur+1} de ${run.T.items.length} · ${run.T.items.filter(x=>x.sel>=0).length} respondidas<div class="row"><button class="pr" data-act="resume">Continuar</button><button class="dg" data-act="discard">Descartar</button></div></div>`:'')+'<h2>Configurar test</h2>'+await cfgHTML('banco')}}
+ else if(v==='errores')await viewErr();else if(v==='historial')await viewHist();else if(v==='stats')await viewStats();
+ else $('main').innerHTML=`<h2>Ajustes y copias</h2><div class="box"><div class="row"><label>Tema <select data-act="theme">${['auto','claro','oscuro'].map(t=>`<option ${t===CFG.theme?'selected':''}>${t}</option>`).join('')}</select></label><label>Sale de errores tras <input id="exN" type="number" min="1" value="${CFG.exitN}" style="width:70px"> aciertos seguidos</label><label><input type="checkbox" id="blk" ${CFG.blankErr?'checked':''}> Las respuestas en blanco cuentan como error</label></div>
+ <div class="row"><label>Nota objetivo / de corte (sobre 10) <input id="cor" type="number" step="0.01" min="0" max="10" value="${CFG.corte||''}" style="width:80px"></label><label>Simulacro oficial: <input id="smN" type="number" min="1" max="300" value="${CFG.simN}" style="width:70px"> preguntas en <input id="smM" type="number" min="1" value="${CFG.simMin}" style="width:70px"> minutos</label><button class="pr" data-act="savecfg">Guardar</button></div></div>
+ <div class="box"><b>Revisión de normativa con IA (opcional)</b><p class="mu">Usa la API de Claude con tu propia clave de <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>. Al revisar, el texto de cada pregunta se envía a Anthropic; el resto de tus datos no sale del equipo. La clave solo se guarda en este navegador y no se incluye en las copias. Cada revisión tiene un coste pequeño (la búsqueda web cuesta 10 $ por cada 1.000 búsquedas, más el texto procesado).</p>
+ <div class="row"><input id="iaK" type="password" autocomplete="off" placeholder="${CFG.apiKey?'Clave guardada (escribe otra para cambiarla)':'Clave de API (sk-ant-…)'}"><select id="iaM">${[['claude-sonnet-5-5','Sonnet 5.5 (recomendado)'],['claude-haiku-5-5','Haiku 5.5 (más barato)'],['claude-opus-5-5','Opus 5.5 (más preciso)']].map(([v,n])=>`<option value="${v}" ${CFG.iaModel===v?'selected':''}>${n}</option>`).join('')}</select></div>
+ <div class="row"><label><input type="checkbox" id="iaW" ${CFG.iaWeb?'checked':''}> Buscar en internet la normativa actual (recomendado)</label><label><input type="checkbox" id="iaInc" ${CFG.incluirDesf?'checked':''}> Incluir en los tests las preguntas marcadas como desfasadas</label><button class="pr" data-act="iasave">Guardar</button>${CFG.apiKey?'<button class="dg" data-act="iaclear">Borrar clave</button>':''}</div></div>
+ <div class="box"><b>Instalar en el móvil o el ordenador</b><p class="mu">${!WEB?'Estás usando el archivo local. Para instalarla en el móvil, usa la versión publicada en GitHub Pages (mira el archivo LEEME.md).':window.matchMedia('(display-mode: standalone)').matches?'Ya la estás usando como aplicación instalada.':'Android y ordenador: pulsa el botón o usa el menú del navegador → «Instalar aplicación» / «Añadir a pantalla de inicio». iPhone/iPad (Safari): botón Compartir → «Añadir a pantalla de inicio». Instalada, el móvil no borra sus datos por falta de uso.'}</p>${WEB&&INSTALL?'<div class="row"><button class="pr" data-act="install">Instalar aplicación</button></div>':''}</div>
+ <div class="box"><b>Uso sin internet</b><p class="mu">Guarda en este navegador PDF.js, Tesseract y el idioma español (unos 7,5 MB, una sola vez). Después la importación y el OCR funcionan sin conexión. La revisión con IA sí necesita internet.</p><div class="row"><button class="pr" data-act="offline">Preparar uso sin conexión</button><span class="mu" id="offst"></span></div></div>
+ <div class="box"><b>Sincronizar entre dispositivos</b><p class="mu">Vincula un archivo dentro de una carpeta que se sincronice sola (Google Drive, OneDrive, Dropbox). La aplicación fusiona sus datos con los tuyos y lo actualiza al terminar cada test. En el segundo ordenador usa «Usar uno existente» con el mismo archivo. En móvil, usa «Enviar copia» e «Importar copia… → Fusionar».</p>
+ <div class="row"><button data-act="syncnew">Crear archivo de sincronización…</button><button data-act="syncopen">Usar uno existente…</button><button class="pr" data-act="syncnow">Sincronizar ahora</button><button data-act="syncshare">Enviar copia</button><button class="dg" data-act="syncoff">Desvincular</button></div><p class="mu" id="syncst"></p></div>
+ <div class="box"><div class="row"><button class="pr" data-act="exp">Exportar todo (JSON)</button><button data-act="imp">Importar copia…</button><input type="file" id="fj" accept=".json" hidden><button data-act="csvq">Preguntas CSV</button><button data-act="csve">Errores CSV</button></div><p class="mu" id="dat"></p><p class="mu" id="pst"></p></div><div class="box"><b>Temario</b><p class="mu">Una línea por tema: «Nombre: palabra clave, otra, sinónimo|variante». Clasifica las preguntas del banco automáticamente.</p><textarea id="tem" rows="6" placeholder="Tema 1 Arqueología medieval: arqueología medieval, al-ándalus&#10;Tema 2 La Alhambra: alhambra, nazarí|nazarita">${E(CFG.temario)}</textarea><div class="row"><label><input type="checkbox" id="temOv"> Reclasificar también las que ya tienen tema</label><button class="pr" data-act="classify">Guardar y clasificar el banco</button></div></div>`;
+ if(v==='ajustes'){dataInfo();DB.get('libs','spa').then(r=>{if(r&&$('offst'))$('offst').textContent='Preparado el '+fd(r.fecha)+'. Vuelve a pulsar para actualizar.'});DB.get('config','synch').then(r=>{if($('syncst'))$('syncst').textContent=r?`Archivo vinculado: ${r.name}${CFG.lastSync?' · última sincronización '+fd(CFG.lastSync):''}`:'Ningún archivo vinculado.'})}
+ if(v==='ajustes')navigator.storage&&navigator.storage.persisted&&navigator.storage.persisted().then(p=>{$('pst').textContent='Almacenamiento persistente: '+(p?'concedido':'no concedido (haz copias con frecuencia)')})}
+const A={
+ nav:e=>go(e.dataset.v),
+ rfilter:e=>{R.filter=e.value;renderReview()},
+ appall:async()=>{let n=0;for(const q of R.qs.filter(q=>q.status==='confirmada'&&!q.dup)){await approve(q);await DB.del('pendientes',q.id);n++}R.qs=R.qs.filter(q=>!(q.status==='confirmada'&&!q.dup));renderReview();toast(n+' aprobadas')},
+ rok:async e=>{const q=LIST[e.dataset.i];await approve(q);await DB.del('pendientes',q.id);R.qs=R.qs.filter(x=>x!==q);renderReview()},
+ rdel:async e=>{const q=LIST[e.dataset.i];await DB.del('pendientes',q.id);R.qs=R.qs.filter(x=>x!==q);renderReview()},
+ bok:async e=>{const q=LIST[e.dataset.i];q.upd=Date.now();await DB.put('preguntas',q);toast('Guardada')},
+ bdel:async e=>{if(confirm('¿Borrar esta pregunta?')){await DB.del('preguntas',LIST[e.dataset.i].id);viewBank()}},
+ bf:e=>{BK[e.dataset.k]=e.value;viewBank()},
+ page:async e=>{const q=LIST[e.dataset.i];let pdf=R.pdfs[q.file];
+  if(!pdf){const rec=await DB.get('pdfdata',q.file);if(!rec||!window.pdfjsLib){toast('El PDF original no está guardado o PDF.js no se ha cargado.');return}await pdfWorker();pdf=R.pdfs[q.file]=await pdfjsLib.getDocument({data:rec.data.slice(0)}).promise}
+  const c=await renderPage(await pdf.getPage(q.page),1.6);c.style.width='100%';let h=$('pg');
+  if(!h){h=document.createElement('div');h.id='pgm';h.style.cssText='position:fixed;inset:4vh 4vw;overflow:auto;background:var(--sf);border:1px solid var(--bd);padding:10px;z-index:8;cursor:pointer';h.title='Pulsa para cerrar';h.onclick=()=>h.remove();document.body.appendChild(h)}
+  h.innerHTML='';h.appendChild(c)},
+ reproc:async e=>{if(VIEW!=='importar')await go('importar');processPdfs([e.dataset.n])},pdel:async e=>{if(confirm('¿Quitar este PDF guardado? Las preguntas ya aprobadas se conservan.')){await DB.del('pdfs',e.dataset.n);await DB.del('pdfdata',e.dataset.n);viewLib()}},
+ newtest:()=>{T=null;go('test')},start:e=>startTest(e.dataset.src),flag:()=>{T.items[T.cur].flag^=1;showQ()},summary,goq:e=>goQ(+e.dataset.i),ans:e=>answer(+e.dataset.i),
+ blank:()=>{T.items[T.cur].sel=-1;showQ()},prev:()=>goQ(T.cur-1),next:()=>T.cur<T.items.length-1?goQ(T.cur+1):summary(),
+ finish:()=>{if(confirm('¿Entregar el test?'))finish()},fix:e=>fixAns(+e.dataset.i),
+ clearerr:async()=>{if(confirm('¿Vaciar todo el banco de errores?')){await DB.clear('errores');viewErr()}},delerr:async e=>{await DB.del('errores',e.dataset.id);viewErr()},
+ theme:e=>{CFG.theme=e.value;saveCfg();applyTheme()},savecfg:async()=>{CFG.exitN=Math.max(1,+$('exN').value||2);CFG.blankErr=$('blk').checked;CFG.corte=Math.min(10,Math.max(0,+$('cor').value||0));CFG.simN=Math.max(1,+$('smN').value||100);CFG.simMin=Math.max(1,+$('smM').value||90);await saveCfg();toast('Guardado')},
+ exp:exportAll,imp:()=>$('fj').click(),csvq:()=>exportCSV('preguntas'),csve:()=>exportCSV('errores')};
+/* ========== TEST TEMÁTICO: búsqueda por palabras clave (local, sin IA) ========== */
+const STOPW=new Set('de del la las el los y e o u en al un una unos unas por con para que se su sus lo a sobre acerca tema temas pregunta preguntas tecnica tecnicas hablen hablan relacionadas relacionado'.split(' '));
+const words=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim().split(' ').filter(Boolean);
+const stem=w=>w.slice(0,6); // raíz aproximada: «arqueología/arqueológico/arqueólogos» → «arqueo»
+function parseThemes(str){return str.split(/[,;\n]+/).map(t=>t.trim()).filter(Boolean).map(t=>({name:t,terms:t.split(/\s+/).map(tok=>[...new Set(tok.split('|').flatMap(w=>words(w)).filter(w=>w.length>2&&!STOPW.has(w)).map(stem))]).filter(g=>g.length)})).filter(t=>t.terms.length)}
+const SC=new WeakMap();
+function themeScore(q,th,loose){let c=SC.get(q);if(!c){const a=new Set(words(q.text+' '+(q.topic||'')).map(stem));c={a,all:new Set([...a,...words(q.opts.join(' ')).map(stem)])};SC.set(q,c)}
+ const m=th.terms.filter(g=>g.some(t=>c.all.has(t))).length,need=loose?Math.ceil(th.terms.length/2):th.terms.length;
+ return m>0&&m>=need?m/th.terms.length+th.terms.filter(g=>g.some(t=>c.a.has(t))).length/th.terms.length*.5:0}
+function themedPick(pool,str,loose,n){const mk=th=>({th,list:pool.map(q=>[q,themeScore(q,th,loose)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1])}),lists=[];
+ // si un tema con «y» no encuentra nada, se separa en sub-temas («la alhambra y la restauración» → dos temas)
+ parseThemes(str).forEach(th=>{const l=mk(th);if(l.list.length||!/\sy\s/.test(th.name))lists.push(l);else parseThemes(th.name.split(/\s+y\s+/).join(',')).forEach(t=>lists.push(mk(t)))});
+ const W=lists.map(x=>x.list.filter(y=>y[0].ans>=0)),picked=[],seen=new Set(); // reparto equilibrado entre temas
+ for(let r=0;picked.length<n;r++){let any=false;W.forEach(l=>{if(r<l.length){any=true;if(!seen.has(l[r][0].id)&&picked.length<n){seen.add(l[r][0].id);picked.push(l[r][0])}}});if(!any)break}
+ return{lists,picked}}
+let PV=[];
+async function scopePool(){const v=$('tS')?$('tS').value:'';return (await DB.all('preguntas')).filter(q=>inScope(q,v))}
+A.tprev=async()=>{const kw=$('tK').value.trim();if(!kw){toast('Escribe al menos un tema.');return}
+ const r=themedPick(await scopePool(),kw,$('tL').checked,1e9);PV=r.lists;
+ $('tPrev').innerHTML=r.lists.map((x,i)=>`<div class="box"><b>${E(x.th.name)}</b> <span class="tag">palabras clave: ${E(x.th.terms.map(g=>g.join('|')).join(', '))} · ${x.list.length} coincidencias (${x.list.filter(y=>y[0].ans>=0).length} con respuesta)</span>${x.list.slice(0,4).map(y=>`<div class="mu">• ${E(y[0].text.slice(0,110))}</div>`).join('')||'<div class="mu">Sin coincidencias: prueba la búsqueda amplia u otras palabras.</div>'}${x.list.length?`<div class="row"><button data-act="tlabel" data-i="${i}">Etiquetar estas preguntas con este tema</button></div>`:''}</div>`).join('')||'<p class="mu">No se han detectado palabras clave.</p>'};
+A.tlabel=async e=>{const x=PV[e.dataset.i];let n=0;for(const y of x.list)if(!y[0].topic){y[0].topic=x.th.name;await DB.put('preguntas',y[0]);n++}toast(n+' preguntas etiquetadas con «'+x.th.name+'»')};
+/* ========== SINCRONIZACIÓN ENTRE DISPOSITIVOS (archivo compartido; nunca incluye la clave de API) ========== */
+async function snapshot(){const c={...CFG};delete c.apiKey;return{app:'oposiciones',v:2,fecha:Date.now(),preguntas:await DB.all('preguntas'),errores:await DB.all('errores'),historial:await DB.all('historial'),config:c}}
+/* Fusión: en cada pregunta gana la versión editada más recientemente; los errores, por fecha de último repaso; los tests se suman sin duplicar */
+async function mergeData(o){let a=0,b=0,c=0;const P=new Map((await DB.all('preguntas')).map(q=>[q.id,q])),up=[];
+ for(const q of o.preguntas||[]){const l=P.get(q.id);if(!l){up.push(q);a++;continue}
+  const n=(q.upd||q.date||0)>(l.upd||l.date||0)?{...q}:{...l};n.vistas=Math.max(q.vistas||0,l.vistas||0);n.aciertos=Math.max(q.aciertos||0,l.aciertos||0);
+  if(JSON.stringify(n)!==JSON.stringify(l)){up.push(n);a++}}
+ await DB.putMany('preguntas',up);
+ const Er=new Map((await DB.all('errores')).map(e=>[e.id,e])),ue=[],t=e=>Math.max(e.last||0,e.lastRev||0);
+ for(const e of o.errores||[]){const l=Er.get(e.id);if(!l||t(e)>t(l)){ue.push(e);b++}}await DB.putMany('errores',ue);
+ const key=h=>h.date+'|'+h.n+'|'+h.ok,hk=new Set((await DB.all('historial')).map(key));
+ for(const h of o.historial||[])if(!hk.has(key(h))){const x={...h};delete x.id;await DB.put('historial',x);hk.add(key(h));c++}
+ return{a,b,c}}
+async function syncFile(interactive){if(!DB.db)return;const r=await DB.get('config','synch');if(!r||!r.h){if(interactive)toast('Primero vincula un archivo de sincronización.');return}
+ const h=r.h;try{let p=await h.queryPermission({mode:'readwrite'});
+  if(p!=='granted'){if(!interactive)return;p=await h.requestPermission({mode:'readwrite'});if(p!=='granted'){toast('Sin permiso para usar el archivo.');return}}
+  let res={a:0,b:0,c:0};const f=await h.getFile();if(f.size){try{const o=JSON.parse(await f.text());if(o.app==='oposiciones')res=await mergeData(o)}catch(e){console.warn('Archivo de sincronización ilegible',e)}}
+  const w=await h.createWritable();await w.write(JSON.stringify(await snapshot()));await w.close();CFG.lastSync=Date.now();await saveCfg();
+  if(interactive){toast(`Sincronizado: ${res.a} preguntas, ${res.b} errores y ${res.c} tests recibidos`);if(VIEW==='ajustes')go('ajustes')}}
+ catch(e){if(interactive)toast('No se pudo sincronizar: '+(e.message||e))}}
+A.syncnew=async()=>{if(!window.showSaveFilePicker){toast('Este navegador no permite vincular archivos. Usa «Enviar copia» e «Importar copia… → Fusionar».');return}
+ try{const h=await showSaveFilePicker({suggestedName:'oposiciones-sync.json',types:[{description:'Sincronización',accept:{'application/json':['.json']}}]});await DB.put('config',{k:'synch',h,name:h.name});await syncFile(true);go('ajustes')}catch(e){if(e.name!=='AbortError')toast('No se pudo vincular: '+e.message)}};
+A.syncopen=async()=>{if(!window.showOpenFilePicker){toast('Este navegador no permite vincular archivos. Usa «Importar copia… → Fusionar».');return}
+ try{const [h]=await showOpenFilePicker({types:[{description:'Sincronización',accept:{'application/json':['.json']}}]});await DB.put('config',{k:'synch',h,name:h.name});await syncFile(true);go('ajustes')}catch(e){if(e.name!=='AbortError')toast('No se pudo vincular: '+e.message)}};
+A.syncnow=()=>syncFile(true);
+A.syncoff=async()=>{await DB.del('config','synch');go('ajustes')};
+A.syncshare=async()=>{const txt=JSON.stringify(await snapshot()),name='oposiciones-sync.json';
+ try{const f=new File([txt],name,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Oposiciones: mis datos'});return}}catch(e){if(e.name==='AbortError')return}
+ download(name,txt);toast('Copia descargada: súbela a tu nube o envíatela para importarla en el otro dispositivo')};
+
+/* ========== IA: revisión de normativa con la API de Claude (opcional, con tu clave) ========== */
+const IA={stop:false,run:false};
+function iaBlock(q,i){const x=q.ia;if(!x)return '';const st={vigente:'✔ vigente',desfasada:'⚠ posiblemente desfasada',dudosa:'? no se ha podido confirmar'}[x.estado]||x.estado;
+ return `<div class="mu" style="margin-top:8px;border-top:1px solid var(--bd);padding-top:6px">🤖 Revisión IA (${new Date(x.fecha).toLocaleDateString('es-ES')}): <b>${E(st)}</b>${x.norma?' · Norma: '+E(x.norma):''}${x.vigente?' · Vigente hoy: '+E(x.vigente):''}<br>${E(x.motivo||'')}${x.fuentes&&x.fuentes.length?'<br>Fuentes: '+x.fuentes.map(f=>`<a href="${E(f.url)}" target="_blank" rel="noopener">${E(f.title||f.url)}</a>`).join(' · '):''}
+ <div class="row">${x.letra>=0&&x.letra!==q.ans?`<button data-act="iaapply" data-i="${i}">Usar la respuesta de la IA (${L[x.letra]})</button>`:''}${q.desfasada?`<button data-act="iavig" data-i="${i}">Marcar como vigente</button>`:`<button data-act="iades" data-i="${i}">Marcar como desfasada</button>`}</div></div>`}
+async function iaCall(q){
+ const prompt=`Hoy es ${new Date().toLocaleDateString('es-ES',{dateStyle:'long'})}. La siguiente pregunta tipo test procede de un examen de oposiciones de patrimonio cultural en España${q.anio?' del año '+q.anio:''}.
+Comprueba si la normativa en la que se basa sigue vigente hoy y si la respuesta marcada como correcta sigue siendo correcta según la normativa actual (estatal y, si procede, autonómica).
+
+Pregunta: ${q.text}
+${q.opts.map((o,i)=>L[i]+') '+o).join('\n')}
+Respuesta marcada como correcta: ${q.ans>=0?L[q.ans]:'ninguna'}${q.ley?'\nReferencia legal indicada: '+q.ley:''}
+
+Responde SOLO con un objeto JSON válido, sin texto antes ni después:
+{"estado":"vigente|desfasada|dudosa","respuesta_hoy":"letra correcta hoy o null","norma_citada":"norma en que se basa la pregunta","norma_vigente":"norma vigente hoy que regula la cuestión","motivo":"explicación en español de 50 palabras como máximo"}
+Criterio: "vigente" si la norma sigue en vigor y la respuesta marcada sigue siendo correcta; "desfasada" si la norma fue derogada o modificada de forma que cambia la respuesta o la pregunta ya no tiene sentido; "dudosa" si no puedes confirmarlo con seguridad.`;
+ const base={model:CFG.iaModel,max_tokens:1500};if(CFG.iaWeb)base.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3,user_location:{type:'approximate',country:'ES'}}];
+ const user={role:'user',content:prompt},out=[];let msgs=[user];
+ for(let k=0;k<3;k++){let r;
+  try{r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':CFG.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({...base,messages:msgs})})}
+  catch(e){throw new Error('Sin conexión con la API de Claude (revisa tu internet)')}
+  if(!r.ok){let m='';try{m=(await r.json()).error.message}catch(e){}
+   throw Object.assign(new Error(r.status===401?'La clave de API no es válida':r.status===429?'Límite de uso de la API alcanzado':r.status===529?'La API está saturada':'Error '+r.status+(m?': '+m:'')),{status:r.status})}
+  const j=await r.json();out.push(...j.content);if(j.stop_reason==='pause_turn'){msgs=[user,{role:'assistant',content:out}];continue}break}
+ const text=out.filter(b=>b.type==='text').map(b=>b.text).join(''),m=text.match(/\{[\s\S]*\}/);if(!m)throw new Error('Respuesta de la IA sin formato válido');
+ const j=JSON.parse(m[0]),fu=new Map();
+ out.forEach(b=>(b.citations||[]).forEach(c=>{if(c.url&&!fu.has(c.url))fu.set(c.url,c.title)}));
+ if(!fu.size)out.filter(b=>b.type==='web_search_tool_result'&&Array.isArray(b.content)).forEach(b=>b.content.slice(0,3).forEach(c=>{if(!fu.has(c.url))fu.set(c.url,c.title)}));
+ const letra=j.respuesta_hoy&&/^[A-E]$/i.test(String(j.respuesta_hoy).trim())?L.indexOf(String(j.respuesta_hoy).trim().toUpperCase()):-1;
+ return{estado:['vigente','desfasada','dudosa'].includes(j.estado)?j.estado:'dudosa',letra:letra<q.opts.length?letra:-1,norma:j.norma_citada||'',vigente:j.norma_vigente||'',motivo:j.motivo||'',fuentes:[...fu].slice(0,3).map(([url,title])=>({url,title})),fecha:Date.now(),modelo:CFG.iaModel}}
+async function iaCheck(q){const x=await iaCall(q),bq=(await DB.get('preguntas',q.id))||q;
+ bq.ia=x;bq.desfasada=x.estado==='desfasada';if((bq.desfasada||(x.letra>=0&&x.letra!==bq.ans))&&bq.status==='confirmada')bq.status='dudosa';
+ bq.upd=Date.now();await DB.put('preguntas',bq);Object.assign(q,bq);return x}
+const iaReady=()=>{if(!CFG.apiKey){toast('Añade tu clave de API de Claude en Ajustes → Revisión de normativa con IA.');return false}return true};
+A.iaone=async e=>{if(!iaReady())return;const q=LIST[e.dataset.i];e.disabled=true;e.textContent='Revisando…';
+ try{const x=await iaCheck(q);toast('Revisión IA: '+x.estado)}catch(err){toast(err.message)}viewBank()};
+A.iaall=async()=>{if(!iaReady()||IA.run)return;const all=(await DB.all('preguntas')).filter(q=>hasNorma(q)&&!q.ia);
+ if(!all.length)return;if(!confirm(`Se enviarán ${all.length} preguntas a la API de Claude${CFG.iaWeb?' con búsqueda en internet':''}. Tiene un coste según tu cuenta de Anthropic. ¿Continuar?`))return;
+ IA.stop=false;IA.run=true;let ok=0,des=0,err=0;const st=()=>$('iast');
+ for(let i=0;i<all.length&&!IA.stop;i++){if(st())st().textContent=`Revisando ${i+1}/${all.length} · ${des} desfasadas · ${err} errores`;
+  try{const x=await iaCheck(all[i]);ok++;if(x.estado==='desfasada')des++}
+  catch(e){err++;if(e.status===401){toast(e.message);break}if(e.status===429||e.status===529){if(st())st().textContent='Esperando a la API…';await new Promise(r=>setTimeout(r,30000));i--;continue}console.warn(e)}
+  await new Promise(r=>setTimeout(r,500))}
+ IA.run=false;toast(`Revisión IA terminada: ${ok} revisadas, ${des} posiblemente desfasadas${err?', '+err+' errores':''}`);if(VIEW==='banco')viewBank()};
+A.iastop=()=>{IA.stop=true;toast('Se detendrá tras la pregunta actual')};
+A.iaapply=async e=>{const q=LIST[e.dataset.i];q.ans=q.ia.letra;q.status='confirmada';q.src='ia';q.desfasada=false;q.conflicto=false;q.upd=Date.now();await DB.put('preguntas',q);toast('Respuesta actualizada a '+L[q.ans]);viewBank()};
+A.iavig=async e=>{const q=LIST[e.dataset.i];q.desfasada=false;q.upd=Date.now();await DB.put('preguntas',q);viewBank()};
+A.iades=async e=>{const q=LIST[e.dataset.i];q.desfasada=true;q.upd=Date.now();await DB.put('preguntas',q);viewBank()};
+A.iasave=async()=>{const k=$('iaK').value.trim();if(k)CFG.apiKey=k;CFG.iaModel=$('iaM').value;CFG.iaWeb=$('iaW').checked;CFG.incluirDesf=$('iaInc').checked;await saveCfg();toast('Guardado');go('ajustes')};
+A.iaclear=async()=>{CFG.apiKey='';await saveCfg();toast('Clave eliminada de este navegador');go('ajustes')};
+A.offline=()=>prepareOffline();
+A.abandon=async()=>{if(!confirm('¿Abandonar este test? No se guardará la nota.'))return;clearInterval(T.iv);T=null;await DB.del('config','run');go('test')};
+A.resume=()=>resumeRun();
+A.discard=async()=>{await DB.del('config','run');go('test')};
+/* ========== VERSIÓN WEB (GitHub Pages): app instalable y uso sin conexión. En local (file://) no hace nada. ========== */
+const WEB=/^https?:$/.test(location.protocol);let INSTALL=null;
+if(WEB){[['manifest','manifest.webmanifest'],['apple-touch-icon','icon-192.png'],['icon','icon-192.png']].forEach(([rel,href])=>{const l=document.createElement('link');l.rel=rel;l.href=href;document.head.appendChild(l)});
+ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Service worker no registrado',e));
+ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL=e;if(VIEW==='ajustes')go('ajustes')})}
+A.install=async()=>{if(!INSTALL)return;INSTALL.prompt();await INSTALL.userChoice;INSTALL=null;go('ajustes')};
+/* ========== HISTORIAL DE TESTS (ordenable por fecha o nota, exportable a CSV) ========== */
+let HS='fecha';const f2=x=>(+x).toFixed(2).replace('.',','),fd=t=>new Date(t).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'});
+async function histRows(){return (await DB.all('historial')).sort((a,b)=>HS==='nota'?b.nota-a.nota:b.date-a.date)}
+async function viewHist(){const h=await histRows(),m=h.length?h.reduce((s,x)=>s+x.nota,0)/h.length:0;
+ $('main').innerHTML=`<h2>Historial de tests (${h.length})</h2><div class="row"><label>Ordenar por <select data-act="hsort"><option value="fecha" ${HS==='fecha'?'selected':''}>Fecha (recientes primero)</option><option value="nota" ${HS==='nota'?'selected':''}>Nota (mejores primero)</option></select></label><button class="pr" data-act="hcsv">Descargar archivo CSV</button><span class="mu">Nota media: ${f2(m)} / 10</span></div>
+ <div style="overflow:auto"><table><tr><th>Fecha</th><th>Origen</th><th>Modo</th><th>Preg.</th><th>Aciertos</th><th>Fallos</th><th>Blancos</th><th>Puntos</th><th>Nota /10</th><th>vs objetivo</th><th>Min.</th><th></th></tr>${h.map(x=>`<tr><td>${fd(x.date)}</td><td>${E(x.label||x.src||'')}</td><td>${E(x.mode)}</td><td>${x.n}</td><td>${x.ok}</td><td>${x.ko}</td><td>${x.blank}</td><td>${x.pts==null?'—':f2(x.pts)+' / '+f2(x.max)}</td><td><b>${f2(x.nota)}</b></td><td>${(x.corte||+CFG.corte)?`<span style="color:var(${x.nota>=(x.corte||CFG.corte)?'--ok':'--ko'})">${x.nota>=(x.corte||CFG.corte)?'+':'−'}${f2(Math.abs(x.nota-(x.corte||CFG.corte)))}</span>`:'—'}</td><td>${Math.round((x.dur||0)/60)}</td><td><button class="dg" data-act="hdel" data-id="${x.id}">✕</button></td></tr>`).join('')||'<tr><td class="mu">Aún no has hecho ningún test.</td></tr>'}</table></div>`}
+A.hsort=e=>{HS=e.value;viewHist()};
+A.hdel=async e=>{if(confirm('¿Borrar este test del historial?')){await DB.del('historial',+e.dataset.id);viewHist()}};
+A.hcsv=async()=>{const h=await histRows();download('historial-tests-por-'+HS+'.csv','\ufeff'+csv([['fecha','origen','modo','preguntas','aciertos','fallos','blancos','puntos','puntos_max','nota_sobre_10','nota_objetivo','minutos'],...h.map(x=>[fd(x.date),x.label||x.src,x.mode,x.n,x.ok,x.ko,x.blank,x.pts==null?'':f2(x.pts),x.max==null?'':f2(x.max),f2(x.nota),x.corte?f2(x.corte):'',Math.round((x.dur||0)/60)])]),'text/csv')};
+/* ========== TEMARIO: clasificación automática por palabras clave ========== */
+A.classify=async()=>{CFG.temario=$('tem').value;await saveCfg();
+ const TM=CFG.temario.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const i=l.indexOf(':');return i<0?null:{name:l.slice(0,i).trim(),th:parseThemes(l.slice(i+1))}}).filter(Boolean);let n=0;
+ for(const q of await DB.all('preguntas')){if(q.topic&&!$('temOv').checked)continue;let best=null,bs=0;
+  for(const t of TM){const sc=Math.max(0,...t.th.map(th=>themeScore(q,th,false)));if(sc>bs){bs=sc;best=t}}
+  if(best&&best.name!==q.topic){q.topic=best.name;await DB.put('preguntas',q);n++}}toast(n+' preguntas clasificadas')};
+async function dataInfo(){const [a,b,c]=await Promise.all([DB.all('preguntas'),DB.all('pdfs'),DB.all('historial')]);let u='';
+ try{const e=await navigator.storage.estimate();u=` · ${(e.usage/1e6).toFixed(0)} MB usados`}catch(x){}
+ $('dat').textContent=`Guardado en este navegador: ${a.length} preguntas · ${b.length} PDFs · ${c.length} tests${u}. ${WEB?'Al publicar una versión nueva en la misma dirección, los datos se conservan.':'Al actualizar la aplicación, guarda el archivo con el mismo nombre y en la misma carpeta: así los datos se conservan.'} Haz copias con «Exportar todo» (no incluye los PDFs).`}
+/* ========== BANCO AUTOMÁTICO + RELACIÓN PREGUNTAS ↔ RESPUESTAS ========== */
+const bankMap=async()=>new Map((await DB.all('preguntas')).map(q=>[q.hash,q]));
+/* Todas las preguntas pasan al banco sin aprobar una a una (las dudosas / sin respuesta quedan marcadas).
+   Una pregunta ya existente en otro examen no se duplica: suma una aparición. */
+async function autoAdd(qs,bm){let add=0,merged=0,skipped=0;
+ for(const q of qs){delete q.dup;const ex=bm.get(q.hash);
+  if(!ex){await DB.put('preguntas',q);bm.set(q.hash,q);add++}
+  else if(ex.file!==q.file||(ex.grp||0)!==(q.grp||0)){ex.veces=(ex.veces||1)+1;ex.anios=[...new Set([...(ex.anios||[ex.anio]),q.anio].filter(Boolean))];(ex.orig=ex.orig||[]).push({file:q.file,grp:q.grp||0,num:q.num});
+   if(ex.ans<0&&q.ans>=0){ex.ans=q.ans;ex.status=q.status}await DB.put('preguntas',ex);merged++}
+  else{if(ex.ans<0&&q.ans>=0){ex.ans=q.ans;ex.status=q.status;await DB.put('preguntas',ex)}skipped++}}
+ return{add,merged,skipped}}
+/* Lee un PDF de respuestas: devuelve un grupo por examen {anio, pairs:{nº:letra}}. Un número repetido o una nueva cabecera con otro año inicia un examen nuevo. */
+function parseSolutions(lines,file){const gs=[],YR=/\b(?:19|20)\d\d\b/;let cur=null,yr=(YR.exec(file||'')||[''])[0];
+ const start=()=>{cur={anio:yr,pairs:{}};gs.push(cur)};
+ for(const l of lines){const t=l.t;
+  if(t.length<130&&/examen|convocatoria|proceso selectivo|ejercicio|plantilla|respuestas|soluciones/i.test(t)&&YR.test(t)){const y=YR.exec(t)[0];
+   if(cur&&Object.keys(cur.pairs).length&&y!==cur.anio){yr=y;cur=null}else if(!cur||!Object.keys(cur.pairs).length){yr=y;if(cur)cur.anio=y}continue}
+  const rx=/(\d{1,3})\s*[.\-–:)]*\s*([a-eA-E])(?![a-zA-Záéíóúñ])/g;let m;
+  while(m=rx.exec(t)){const n=+m[1];if(n<1||n>300)continue;if(!cur||cur.pairs[n]!=null)start();cur.pairs[n]=L.indexOf(m[2].toUpperCase())}}
+ return gs.filter(g=>Object.keys(g.pairs).length)}
+const STOPF=new Set('examen examenes respuestas respuesta soluciones solucion solucionario plantilla plantillas claves clave pdf de del la el y oposiciones convocatoria cuestionario preguntas test'.split(' '));
+const fw=n=>new Set(words(n.replace(/\.pdf$/i,'')).filter(w=>!STOPF.has(w)&&w.length>1));
+/* Empareja cada examen de respuestas con el examen de preguntas que mejor encaja (año, parecido de nombres y cobertura de la numeración).
+   Es independiente del orden: se ejecuta tras cada importación, también si las respuestas se subieron antes que las preguntas. */
+async function linkAnswers(){const pdfs=await DB.all('pdfs'),bank=await DB.all('preguntas'),G=new Map();
+ const add=(file,grp,anio,q,num)=>{const k=file+'|'+(grp||0);let g=G.get(k);if(!g)G.set(k,g={file,grp:grp||0,anio:'',mem:[]});g.mem.push({q,num});if(!g.anio&&anio)g.anio=anio};
+ bank.forEach(q=>{add(q.file,q.grp,q.anio,q,q.num);(q.orig||[]).forEach(o=>add(o.file,o.grp,null,q,o.num))});
+ const sgs=[];pdfs.filter(p=>p.tipo==='respuestas').forEach(p=>(p.solGroups||[]).forEach((g,i)=>sgs.push({pdf:p,i,g,n:Object.keys(g.pairs).length})));
+ const cand=[];
+ for(const sg of sgs)for(const qg of G.values()){const nums=qg.mem.map(m=>m.num).filter(Boolean);if(nums.length<5&&!(nums.length>=3&&sg.g.anio&&qg.anio&&sg.g.anio===qg.anio))continue; // examen muy corto: solo si coincide el año
+  const cov=nums.filter(n=>sg.g.pairs[n]!=null).length/nums.length;if(cov<0.6)continue;
+  const a=fw(sg.pdf.name),b=fw(qg.file),jac=[...a].filter(x=>b.has(x)).length/(new Set([...a,...b]).size||1),ya=sg.g.anio||'',yb=qg.anio||'';
+  cand.push({sg,qg,cov,sc:cov*3+jac*4+(ya&&yb&&ya===yb?5:0)-(ya&&yb&&ya!==yb?4:0)+(Math.abs(sg.n-nums.length)<=2?1:0)})}
+ cand.sort((x,y)=>y.sc-x.sc);const uS=new Set(),uQ=new Set(),res=[],links={};
+ for(const c of cand){const ks=c.sg.pdf.name+'|'+c.sg.i,kq=c.qg.file+'|'+c.qg.grp;if(uS.has(ks)||uQ.has(kq)||c.sc<2.5)continue;uS.add(ks);uQ.add(kq);
+  let set=0,conf=0;const tc=new Set();
+  for(const m of c.qg.mem){const v=c.sg.g.pairs[m.num];if(v==null||v>=m.q.opts.length)continue;
+   if(m.q.ans<0){m.q.ans=v;m.q.status='confirmada';m.q.ocr=false;m.q.src='plantilla';set++;tc.add(m.q)}
+   else if(m.q.ans!==v){if(m.q.src!=='manual'&&!m.q.conflicto){m.q.status='dudosa';m.q.conflicto=true;conf++;tc.add(m.q)}}
+   else if(m.q.status!=='confirmada'){m.q.status='confirmada';tc.add(m.q)}}
+  for(const q of tc)await DB.put('preguntas',q);
+  res.push({fq:c.qg.file+(c.qg.anio?` (${c.qg.anio})`:''),a:c.sg.pdf.name,set,conf,tot:c.qg.mem.length});
+  (links[c.qg.file]=links[c.qg.file]||new Set()).add(c.sg.pdf.name);(links[c.sg.pdf.name]=links[c.sg.pdf.name]||new Set()).add(c.qg.file)}
+ for(const p of pdfs){const v=links[p.name]?[...links[p.name]].join(', '):'';if((p.vinculo||'')!==v){p.vinculo=v;await DB.put('pdfs',p)}}
+ const fresh=await DB.all('preguntas');
+ return{res,huerf:sgs.filter(x=>!uS.has(x.pdf.name+'|'+x.i)).map(x=>x.pdf.name+(x.g.anio?` (${x.g.anio})`:'')),sin:fresh.filter(q=>q.ans<0).length,dud:fresh.filter(q=>q.status==='dudosa').length}}
+function showLink(r,sum){const el=$('linkrep');if(!el)return;
+ el.innerHTML=`<div class="box"><b>Resultado de la importación</b>${sum.map(x=>`<div>${E(x)}</div>`).join('')}${r.res.map(x=>`<div class="mu">🔗 ${E(x.fq)} ← ${E(x.a)}: ${x.set} respuestas asignadas${x.conf?' · '+x.conf+' no coinciden con la marcada':''} (${x.tot} preguntas)</div>`).join('')}${r.huerf.map(n=>`<div class="mu">⚠ Sin pareja: ${E(n)}. No hay un examen de preguntas con esa numeración y año; se relacionará solo cuando lo importes.</div>`).join('')}<div class="row">${r.sin?`<button data-act="gostat" data-s="sin respuesta">Ver preguntas sin respuesta (${r.sin})</button>`:''}${r.dud?`<button data-act="gostat" data-s="dudosa">Ver dudosas (${r.dud})</button>`:''}</div></div>`}
+A.gostat=e=>{BK.status=e.dataset.s;go('banco')};
+A.relink=async()=>{const r=await linkAnswers();showLink(r,[]);viewLib();toast('Respuestas relacionadas')};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&b.tagName!=='SELECT'&&A[b.dataset.act]){A[b.dataset.act](b);return}
+ if(e.target.closest('#drop'))$('fi').click()});
+document.addEventListener('change',e=>{const t=e.target,a=t.dataset.act;
+ if(a&&t.tagName==='SELECT'&&A[a]){A[a](t);return}
+ if(t.id==='fi')importFiles(t.files);if(t.id==='fj'&&t.files[0])importAll(t.files[0]);
+ const c=t.closest&&t.closest('.card[data-i]');if(c&&t.dataset.f){const q=LIST[c.dataset.i],f=t.dataset.f;
+  if(f==='text')q.text=t.value;else if(f==='opt')q.opts[+t.dataset.o]=t.value;else if(f==='topic')q.topic=t.value;else if(f==='ans'){q.ans=+t.value;q.status=q.ans<0?'sin respuesta':'confirmada';q.ocr=false;q.src='manual';q.conflicto=false}else if(f==='nota')q.nota=t.value;else if(f==='ley')q.ley=t.value;else if(f==='excl')q.excl=t.checked;if(R.qs.includes(q))DB.put('pendientes',q)}});
+document.addEventListener('input',e=>{if(e.target.id==='bq'){BK.q=e.target.value;clearTimeout(input.h);input.h=setTimeout(async()=>{await viewBank();const i=$('bq');i.focus();i.setSelectionRange(99,99)},300)}});
+const input={};
+document.addEventListener('dragover',e=>{if(e.target.closest&&e.target.closest('#drop')){e.preventDefault();$('drop').classList.add('hv')}});
+document.addEventListener('dragleave',()=>{$('drop')&&$('drop').classList.remove('hv')});
+document.addEventListener('drop',e=>{if(e.target.closest&&e.target.closest('#drop')){e.preventDefault();$('drop').classList.remove('hv');importFiles(e.dataTransfer.files)}});
+document.addEventListener('keydown',e=>{if(!T||!T.run||VIEW!=='test'||T.summary||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+ const k=e.key.toUpperCase();if(L.includes(k)&&k.length===1||['Enter','ArrowRight','ArrowLeft'].includes(e.key))e.preventDefault();if(L.includes(k)&&k.length===1)answer(L.indexOf(k));else if(e.key==='Enter')A.next();else if(e.key==='ArrowRight')goQ(T.cur+1);else if(e.key==='ArrowLeft')goQ(T.cur-1)});
+
+/* ========== ARRANQUE ========== */
+(async()=>{try{await DB.open();Object.assign(CFG,(await DB.get('config','cfg'))||{});await ensureLibs();
+ if(!CFG.leyMig){const up=(await DB.all('preguntas')).filter(q=>q.ley===undefined);up.forEach(q=>q.ley=extractLey(q));await DB.putMany('preguntas',up);CFG.leyMig=1;await saveCfg()}for(const p of await DB.all('pdfs'))if(p.data){await DB.put('pdfdata',{name:p.name,data:p.data});delete p.data;await DB.put('pdfs',p)}
+ const pend=await DB.all('pendientes');if(pend.length){await autoAdd(pend,await bankMap());await DB.clear('pendientes');await linkAnswers()}applyTheme();
+ if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+ if(await DB.get('config','run'))go('test');else go('importar');syncFile(false)}
+ catch(e){console.error(e);$('main').innerHTML='<div class="banner">No se puede usar el almacenamiento del navegador (IndexedDB). Evita el modo privado.</div>'}})();
+</script></body></html>
